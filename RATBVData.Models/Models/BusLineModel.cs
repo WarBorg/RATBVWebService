@@ -20,6 +20,7 @@ namespace RATBVData.Models.Models
         [JsonProperty("type")]
         public string Type { get; set; }
 
+        // TODO check this property if we still need it
         [JsonProperty("color")]
         public string Color { get; set; }
 
@@ -29,7 +30,7 @@ namespace RATBVData.Models.Models
         [JsonProperty("linkReverseWay")]
         public string LinkReverseWay { get; set; }
 
-        [JsonProperty("lastUpdateDate")]
+        [JsonIgnore]
         public string LastUpdateDate { get; set; }
 
         [JsonIgnore]

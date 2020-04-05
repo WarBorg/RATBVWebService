@@ -32,9 +32,9 @@ namespace RATBVWebService.Data.Services
 
             try
             {
-                var httpWebRequest = (HttpWebRequest)HttpWebRequest.Create(url);
+                var httpWebRequest = WebRequest.Create(url);
 
-                var response = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
+                var response = await httpWebRequest.GetResponseAsync();
 
                 var responseStream = response.GetResponseStream();
 
@@ -58,8 +58,16 @@ namespace RATBVWebService.Data.Services
                                         .Elements("tr")
                                         .Skip(1);
 
+                // HACK to get out of the foreachloop for the TRANSPORT METROPOLITAN section
+                var breakLoop = false;
+
                 foreach (var row in busLinesRows)
                 {
+                    if (breakLoop)
+                    {
+                        break;
+                    }
+
                     var items = row.Elements("td")
                                    .ToArray();
 
@@ -87,6 +95,8 @@ namespace RATBVWebService.Data.Services
                         if (items[i].Descendants("a")
                                     .FirstOrDefault() == null)
                         {
+                            breakLoop = true;
+
                             break;
                         }
 
@@ -169,13 +179,13 @@ namespace RATBVWebService.Data.Services
             {
                 var busStations = new List<BusStationModel>();
 
-                var lineNumberStationsLink = await GetBusMainDisplayAsync(lineNumberLink, true);
+                var lineNumberStationsLink = await GetBusMainDisplayAsync(lineNumberLink);
 
                 var url = $"{WebSiteRoot}afisaje/{lineNumberStationsLink}";
 
-                var httpWebRequest = (HttpWebRequest)HttpWebRequest.Create(url);
+                var httpWebRequest = WebRequest.Create(url);
 
-                var response = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
+                var response = await httpWebRequest.GetResponseAsync();
 
                 var responseStream = response.GetResponseStream();
 
@@ -247,7 +257,7 @@ namespace RATBVWebService.Data.Services
             }
         }
 
-        private async Task<string> GetBusMainDisplayAsync(string lineNumberLink, bool IsStationRequest)
+        private async Task<string> GetBusMainDisplayAsync(string lineNumberLink)
         {
             try
             {
@@ -255,9 +265,9 @@ namespace RATBVWebService.Data.Services
 
                 string url = $"{WebSiteRoot}{formattedLineNumberLink}";
 
-                var httpWebRequest = (HttpWebRequest)HttpWebRequest.Create(url);
+                var httpWebRequest = WebRequest.Create(url);
 
-                var response = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
+                var response = await httpWebRequest.GetResponseAsync();
 
                 var responseStream = response.GetResponseStream();
 
@@ -265,39 +275,22 @@ namespace RATBVWebService.Data.Services
 
                 doc.Load(responseStream);
 
-                if (IsStationRequest)
-                {
-                    HtmlNode frameStations = doc.DocumentNode
-                                                .Descendants("frame")
-                                                .Where(x => x.Attributes
-                                                             .Contains("name")
-                                                         && x.Attributes
-                                                             .Contains("noresize")
-                                                         && x.Attributes["name"]
-                                                             .Value
-                                                             .Equals("frTabs")
-                                                         && x.Attributes["noresize"]
-                                                             .Value
-                                                             .Equals("noresize"))
-                                                .SingleOrDefault();
+                HtmlNode frameStations = doc.DocumentNode
+                                            .Descendants("frame")
+                                            .Where(x => x.Attributes
+                                                         .Contains("name")
+                                                     && x.Attributes
+                                                         .Contains("noresize")
+                                                     && x.Attributes["name"]
+                                                         .Value
+                                                         .Equals("frTabs")
+                                                     && x.Attributes["noresize"]
+                                                         .Value
+                                                         .Equals("noresize"))
+                                            .SingleOrDefault();
 
-                    return frameStations.Attributes["src"]
-                                        .Value;
-                }
-                else
-                {
-                    HtmlNode frameSchedual = doc.DocumentNode
-                                                .Descendants("frame")
-                                                .Where(x => x.Attributes
-                                                             .Contains("name")
-                                                         && x.Attributes["name"]
-                                                             .Value
-                                                             .Equals("MainFrame"))
-                                                .SingleOrDefault();
-
-                    return frameSchedual.Attributes["src"]
-                                        .Value;
-                }
+                return frameStations.Attributes["src"]
+                                    .Value;
             }
             catch (Exception ex)
             {
@@ -309,9 +302,83 @@ namespace RATBVWebService.Data.Services
 
         #region Bus Time Table Methods
 
-        public Task<List<BusTimeTableModel>> GetBusTimeTableAsync(string schedualLink)
+        public async Task<List<BusTimeTableModel>> GetBusTimeTableAsync(string schedualLink)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var busTimeTable = new List<BusTimeTableModel>();
+
+                string formattedSchedualLink = schedualLink.Replace("___", "/");
+
+                string url = $"{WebSiteRoot}afisaje/{formattedSchedualLink}";
+
+                var httpWebRequest = WebRequest.Create(url);
+
+                var response = await httpWebRequest.GetResponseAsync();
+
+                var responseStream = response.GetResponseStream();
+
+                var doc = new HtmlDocument();
+
+                doc.Load(responseStream);
+
+                var tableWeekdays = doc.GetElementbyId("tabele")
+                                       .ChildNodes[1];
+                var tableWeekend = doc.GetElementbyId("tabele")
+                                      .ChildNodes[3];
+
+                // Get the time of week time table
+                GetTimeTablePerTimeofWeek(busTimeTable, tableWeekdays, TimeOfTheWeek.WeekDays);
+                // Get the weekend time table
+                GetTimeTablePerTimeofWeek(busTimeTable, tableWeekend, TimeOfTheWeek.Saturday);
+                GetTimeTablePerTimeofWeek(busTimeTable, tableWeekend, TimeOfTheWeek.Sunday);
+
+                return busTimeTable;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        private void GetTimeTablePerTimeofWeek(List<BusTimeTableModel> busTimeTable,
+                                               HtmlNode tableWeekdays,
+                                               TimeOfTheWeek timeOfWeek)
+        {
+            var hour = string.Empty;
+            var minutes = string.Empty;
+
+            // Skip first three items because of time of week div, hour div and minutes div
+            foreach (HtmlNode node in tableWeekdays.Descendants("div")
+                                                   .ToList()
+                                                   .Skip(3))
+            {
+                if (node.Id == "web_class_hours")
+                {
+                    hour = node.InnerText
+                               .Replace('\n', ' ')
+                               .Trim();
+                }
+                else if (node.Id == "web_class_minutes")
+                {
+                    foreach (var minuteNode in node.Descendants("div").ToList())
+                    {
+                        minutes += $" {minuteNode.InnerText.Trim()}";
+                    }
+                }
+
+                if (!string.IsNullOrEmpty(hour) && !string.IsNullOrEmpty(minutes))
+                {
+                    busTimeTable.Add(new BusTimeTableModel
+                    {
+                        Hour = hour,
+                        Minutes = minutes.Substring(1),
+                        TimeOfWeek = timeOfWeek.ToString()
+                    });
+
+                    hour = minutes = string.Empty;
+                }
+            }
         }
 
         #endregion
