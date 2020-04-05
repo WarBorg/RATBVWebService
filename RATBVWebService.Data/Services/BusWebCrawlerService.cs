@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -14,6 +13,12 @@ namespace RATBVWebService.Data.Services
 {
     public class BusWebCrawlerService : IBusDataService
     {
+        #region Constants
+
+        private const string WebSiteRoot = "https://www.ratbv.ro/";
+
+        #endregion
+
         #region Bus Lines Methods
 
         // TODO Get busses from TRANSPORT METROPOLITAN
@@ -23,7 +28,7 @@ namespace RATBVWebService.Data.Services
 
             var busLines = new List<BusLineModel>();
 
-            string url = "http://www.ratbv.ro/trasee-si-orare/";
+            string url = $"{WebSiteRoot}trasee-si-orare/";
 
             try
             {
@@ -31,7 +36,7 @@ namespace RATBVWebService.Data.Services
 
                 var response = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
 
-                Stream responseStream = response.GetResponseStream();
+                var responseStream = response.GetResponseStream();
 
                 var doc = new HtmlDocument();
 
@@ -40,13 +45,13 @@ namespace RATBVWebService.Data.Services
                 var div = doc.DocumentNode
                              .Descendants("div")
                              .Where(x => x.Attributes
-                                          .Contains("class") &&
-                                         x.Attributes["class"]
+                                          .Contains("class")
+                                      && x.Attributes["class"]
                                           .Value
                                           .Contains("box continut-pagina"))
                              .SingleOrDefault();
 
-                var table = div.Element("table");
+                var table = div?.Element("table");
 
                 // Skip one because of the bus type titles on first row
                 var busLinesRows = table.Element("tbody")
@@ -77,8 +82,6 @@ namespace RATBVWebService.Data.Services
                                           .Replace("&nbsp;", " ")
                                           .Replace("&acirc;", "â");
 
-                        Console.WriteLine(str);
-
                         // If there are cells which dont contain the a href element it means we are at the
                         // TRANSPORT METROPOLITAN line so we break
                         if (items[i].Descendants("a")
@@ -87,10 +90,13 @@ namespace RATBVWebService.Data.Services
                             break;
                         }
 
-                        string linkNormalWay = items[i].Descendants("a")
-                                                       .FirstOrDefault()
-                                                       .Attributes["href"]
-                                                       .Value;
+                        string linkNormalWay = items[i]?.Descendants("a")
+                                                       ?.FirstOrDefault()
+                                                       ?.Attributes["href"]
+                                                       ?.Value
+                                                       ?.Remove(0, 1)
+                                                       // Replace the / to a more common HTML frendly carachter 
+                                                       ?.Replace("/", "___");
 
                         string linkReverseWay = linkNormalWay.Replace("dus", "intors");
 
@@ -110,9 +116,9 @@ namespace RATBVWebService.Data.Services
 
                 return busLines;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                throw e;
+                throw ex;
             }
         }
 
@@ -139,30 +145,175 @@ namespace RATBVWebService.Data.Services
             route = line_route.Skip(2)
                               .Aggregate((k, l) => $"{k} {l}");
 
-            if (i == 0)
+            switch (i)
             {
-                type = BusTypes.Bus;
-            }
-            else if (i == 1)
-            {
-                type = BusTypes.Midibus;
-            }
-            else if (i == 2)
-            {
-                type = BusTypes.Trolleybus;
+                case 0:
+                    type = BusTypes.Bus;
+                    break;
+                case 1:
+                    type = BusTypes.Midibus;
+                    break;
+                case 2:
+                    type = BusTypes.Trolleybus;
+                    break;
             }
         }
 
         #endregion
 
-        public Task<List<BusStationModel>> GetBusStationsAsync(string lineNumberLink)
+        #region Bus Station Methods
+
+        public async Task<List<BusStationModel>> GetBusStationsAsync(string lineNumberLink)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var busStations = new List<BusStationModel>();
+
+                var lineNumberStationsLink = await GetBusMainDisplayAsync(lineNumberLink, true);
+
+                var url = $"{WebSiteRoot}afisaje/{lineNumberStationsLink}";
+
+                var httpWebRequest = (HttpWebRequest)HttpWebRequest.Create(url);
+
+                var response = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
+
+                var responseStream = response.GetResponseStream();
+
+                var doc = new HtmlDocument();
+
+                doc.Load(responseStream);
+
+                var div = doc.DocumentNode
+                        .Descendants("div")
+                        .Where(x => x.Attributes
+                                     .Contains("id")
+                                 && x.Attributes["id"]
+                                     .Value
+                                     .Contains("div_center_"))
+                        .ToList();
+
+                bool isFirstScheduleLink = true;
+                string firstScheduleLink = string.Empty;
+
+                foreach (HtmlNode station in div)
+                {
+                    string stationName = station.InnerText
+                                                .Trim();
+                    string scheduleLink = station.Descendants("a")
+                                                 .FirstOrDefault()
+                                                 .Attributes["href"]
+                                                 .Value;
+                    string lineLink = lineNumberStationsLink.Substring(0, lineNumberStationsLink.IndexOf('/'));
+                    string fullSchedualLink = $"{lineLink}/{scheduleLink}";
+
+                    // Save the first schedule link 
+                    if (isFirstScheduleLink)
+                    {
+                        firstScheduleLink = scheduleLink;
+
+                        isFirstScheduleLink = false;
+                    }
+
+                    if (fullSchedualLink.Contains("/../"))
+                    {
+                        string reverseScheduleLink = firstScheduleLink;
+                        string reverseLineLink = fullSchedualLink.Substring(fullSchedualLink.LastIndexOf("/") + 1)
+                                                                 .Replace(".html", string.Empty);
+
+                        if (reverseScheduleLink.Contains("_cl1_"))
+                        {
+                            reverseScheduleLink = reverseScheduleLink.Replace("_cl1_", "_cl2_");
+                        }
+                        else if (reverseScheduleLink.Contains("_cl2_"))
+                        {
+                            reverseScheduleLink = reverseScheduleLink.Replace("_cl2_", "_cl1_");
+                        }
+
+                        fullSchedualLink = $"{reverseLineLink}/{reverseScheduleLink}";
+                    }
+
+                    busStations.Add(new BusStationModel
+                    {
+                        Name = stationName,
+                        SchedualLink = fullSchedualLink.Replace("/", "___")
+                    });
+                }
+
+                return busStations;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
         }
+
+        private async Task<string> GetBusMainDisplayAsync(string lineNumberLink, bool IsStationRequest)
+        {
+            try
+            {
+                var formattedLineNumberLink = lineNumberLink.Replace("___", "/");
+
+                string url = $"{WebSiteRoot}{formattedLineNumberLink}";
+
+                var httpWebRequest = (HttpWebRequest)HttpWebRequest.Create(url);
+
+                var response = (HttpWebResponse)await httpWebRequest.GetResponseAsync();
+
+                var responseStream = response.GetResponseStream();
+
+                var doc = new HtmlDocument();
+
+                doc.Load(responseStream);
+
+                if (IsStationRequest)
+                {
+                    HtmlNode frameStations = doc.DocumentNode
+                                                .Descendants("frame")
+                                                .Where(x => x.Attributes
+                                                             .Contains("name")
+                                                         && x.Attributes
+                                                             .Contains("noresize")
+                                                         && x.Attributes["name"]
+                                                             .Value
+                                                             .Equals("frTabs")
+                                                         && x.Attributes["noresize"]
+                                                             .Value
+                                                             .Equals("noresize"))
+                                                .SingleOrDefault();
+
+                    return frameStations.Attributes["src"]
+                                        .Value;
+                }
+                else
+                {
+                    HtmlNode frameSchedual = doc.DocumentNode
+                                                .Descendants("frame")
+                                                .Where(x => x.Attributes
+                                                             .Contains("name")
+                                                         && x.Attributes["name"]
+                                                             .Value
+                                                             .Equals("MainFrame"))
+                                                .SingleOrDefault();
+
+                    return frameSchedual.Attributes["src"]
+                                        .Value;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        #endregion
+
+        #region Bus Time Table Methods
 
         public Task<List<BusTimeTableModel>> GetBusTimeTableAsync(string schedualLink)
         {
             throw new NotImplementedException();
         }
+
+        #endregion
     }
 }
