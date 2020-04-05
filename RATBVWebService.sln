@@ -1,0 +1,29 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RATBVWebService.RestApi", "RATBVWebService.RestApi\RATBVWebService.RestApi.csproj", "{8BC9519B-A0BA-48FE-8AA3-184820124416}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RATBVWebService.Data", "RATBVWebService.Data\RATBVWebService.Data.csproj", "{926020D9-487B-4A41-9007-FC69D90DA9BD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RATBVData.Models", "RATBVData.Models\RATBVData.Models.csproj", "{6646762B-DAF1-47F4-B272-023FE0B884A2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8BC9519B-A0BA-48FE-8AA3-184820124416}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8BC9519B-A0BA-48FE-8AA3-184820124416}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8BC9519B-A0BA-48FE-8AA3-184820124416}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8BC9519B-A0BA-48FE-8AA3-184820124416}.Release|Any CPU.Build.0 = Release|Any CPU
+		{926020D9-487B-4A41-9007-FC69D90DA9BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{926020D9-487B-4A41-9007-FC69D90DA9BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{926020D9-487B-4A41-9007-FC69D90DA9BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{926020D9-487B-4A41-9007-FC69D90DA9BD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6646762B-DAF1-47F4-B272-023FE0B884A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6646762B-DAF1-47F4-B272-023FE0B884A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6646762B-DAF1-47F4-B272-023FE0B884A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6646762B-DAF1-47F4-B272-023FE0B884A2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
