@@ -8,4 +8,7 @@
     <Folder Include="Interfaces\" />
     <Folder Include="Services\" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RATBVData\RATBVData.Models\RATBVData.Models.csproj" />
+  </ItemGroup>
 </Project>
