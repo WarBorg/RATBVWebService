@@ -6,10 +6,6 @@
 
 
   <ItemGroup>
-    <ProjectReference Include="..\RATBVData.Models\RATBVData.Models.csproj">
-      <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
-      <ReferenceSourceTarget>ProjectReference</ReferenceSourceTarget>
-    </ProjectReference>
     <ProjectReference Include="..\RATBVWebService.Data\RATBVWebService.Data.csproj">
       <GlobalPropertiesToRemove></GlobalPropertiesToRemove>
     </ProjectReference>
