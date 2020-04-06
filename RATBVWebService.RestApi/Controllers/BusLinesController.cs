@@ -9,7 +9,7 @@ namespace RATBVWebService.RestApi.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class BusLineController : Controller
+    public class BusLinesController : Controller
     {
         #region Dependencies
 
@@ -19,7 +19,7 @@ namespace RATBVWebService.RestApi.Controllers
 
         #region Constructor
 
-        public BusLineController(IBusDataService busRepository)
+        public BusLinesController(IBusDataService busRepository)
         {
             _busDataService = busRepository;
         }
@@ -28,14 +28,14 @@ namespace RATBVWebService.RestApi.Controllers
 
         #region GET API Methods
 
-        // GET: api/values
+        // GET: api/buslines
         [HttpGet]
         public async Task<IEnumerable<BusLineModel>> Get()
         {
             return await _busDataService.GetBusLinesAsync();
         }
 
-        // GET api/values/5
+        // GET api/buslines/valid_line_number
         [HttpGet("{number}")]
         public async Task<ActionResult<BusLineModel>> Get(string number)
         {
