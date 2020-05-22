@@ -28,7 +28,7 @@ namespace RATBVWebService.Data.Services
 
             var busLines = new List<BusLineModel>();
 
-            string url = $"{WebSiteRoot}trasee-si-orare/";
+            var url = $"{WebSiteRoot}trasee-si-orare/";
 
             try
             {
@@ -53,6 +53,11 @@ namespace RATBVWebService.Data.Services
 
                 var table = div?.Element("table");
 
+                if (table == null)
+                {
+                    throw new Exception("Bus Lines div element table could not be found.");
+                }
+
                 // Skip one because of the bus type titles on first row
                 var busLinesRows = table.Element("tbody")
                                         .Elements("tr")
@@ -71,12 +76,22 @@ namespace RATBVWebService.Data.Services
                     var items = row.Elements("td")
                                    .ToArray();
 
+                    if (items == null)
+                    {
+                        throw new Exception("Bus Lines td elements could not be found.");
+                    }
+
                     var line = string.Empty;
                     var route = string.Empty;
                     var type = BusTypes.Bus;
 
                     for (int i = 0; i < items.Length; i++)
                     {
+                        if (items[i] == null)
+                        {
+                            continue;
+                        }
+
                         if (items[i].InnerText
                                     .Trim()
                                     .Replace("&nbsp;", string.Empty)
@@ -100,15 +115,20 @@ namespace RATBVWebService.Data.Services
                             break;
                         }
 
-                        string linkNormalWay = items[i]?.Descendants("a")
-                                                       ?.FirstOrDefault()
-                                                       ?.Attributes["href"]
-                                                       ?.Value
-                                                       ?.Remove(0, 1)
-                                                       // Replace the / to a more common HTML frendly carachter 
-                                                       ?.Replace("/", "___");
+                        var linkNormalWay = items[i].Descendants("a")
+                                                   ?.FirstOrDefault()
+                                                   ?.Attributes["href"]
+                                                   ?.Value
+                                                   ?.Remove(0, 1)
+                                                   // Replace the / to a more common HTML frendly carachter 
+                                                   ?.Replace("/", "___");
 
-                        string linkReverseWay = linkNormalWay.Replace("dus", "intors");
+                        if (linkNormalWay == null)
+                        {
+                            throw new Exception("Bus Line link normal way could be corrupted or not found.");
+                        }
+
+                        var linkReverseWay = linkNormalWay.Replace("dus", "intors");
 
                         CleanUpBusLinesText(ref line, ref route, ref type, i, str);
 
@@ -181,6 +201,11 @@ namespace RATBVWebService.Data.Services
 
                 var lineNumberStationsLink = await GetBusMainDisplayAsync(lineNumberLink);
 
+                if (lineNumberStationsLink == null)
+                {
+                    throw new Exception("Bus Stations links could be corrupted or not found.");
+                }
+
                 var url = $"{WebSiteRoot}afisaje/{lineNumberStationsLink}";
 
                 var httpWebRequest = WebRequest.Create(url);
@@ -193,28 +218,36 @@ namespace RATBVWebService.Data.Services
 
                 doc.Load(responseStream);
 
-                var div = doc.DocumentNode
-                        .Descendants("div")
-                        .Where(x => x.Attributes
-                                     .Contains("id")
-                                 && x.Attributes["id"]
-                                     .Value
-                                     .Contains("div_center_"))
-                        .ToList();
+                var div = doc?.DocumentNode
+                             ?.Descendants("div")
+                             ?.Where(x => x.Attributes
+                                           .Contains("id")
+                                      && x.Attributes["id"]
+                                          .Value
+                                          .Contains("div_center_"))
+                             ?.ToList();
 
-                bool isFirstScheduleLink = true;
-                string firstScheduleLink = string.Empty;
+                if (div == null)
+                {
+                    throw new Exception("Bus Stations div element could not be found.");
+                }
+
+                var isFirstScheduleLink = true;
+                var firstScheduleLink = string.Empty;
 
                 foreach (HtmlNode station in div)
                 {
-                    string stationName = station.InnerText
-                                                .Trim();
-                    string scheduleLink = station.Descendants("a")
-                                                 .FirstOrDefault()
-                                                 .Attributes["href"]
-                                                 .Value;
-                    string lineLink = lineNumberStationsLink.Substring(0, lineNumberStationsLink.IndexOf('/'));
-                    string fullSchedualLink = $"{lineLink}/{scheduleLink}";
+                    var stationName = station?.InnerText
+                                             ?.Trim()
+                                             ?? "Corrupted station";
+                    var scheduleLink = station?.Descendants("a")
+                                              ?.FirstOrDefault()
+                                              ?.Attributes["href"]
+                                              ?.Value;
+
+                    var lineLink = lineNumberStationsLink.Substring(0, lineNumberStationsLink.IndexOf('/'));
+
+                    var fullSchedualLink = $"{lineLink}/{scheduleLink}";
 
                     // Save the first schedule link 
                     if (isFirstScheduleLink)
@@ -224,11 +257,16 @@ namespace RATBVWebService.Data.Services
                         isFirstScheduleLink = false;
                     }
 
+                    if (firstScheduleLink == null)
+                    {
+                        throw new Exception($"Bus Station {stationName} first schedule link is corrupt or could not be found.");
+                    }
+
                     if (fullSchedualLink.Contains("/../"))
                     {
-                        string reverseScheduleLink = firstScheduleLink;
-                        string reverseLineLink = fullSchedualLink.Substring(fullSchedualLink.LastIndexOf("/") + 1)
-                                                                 .Replace(".html", string.Empty);
+                        var reverseScheduleLink = firstScheduleLink;
+                        var reverseLineLink = fullSchedualLink?.Substring(fullSchedualLink.LastIndexOf("/") + 1)
+                                                              ?.Replace(".html", string.Empty);
 
                         if (reverseScheduleLink.Contains("_cl1_"))
                         {
@@ -237,6 +275,11 @@ namespace RATBVWebService.Data.Services
                         else if (reverseScheduleLink.Contains("_cl2_"))
                         {
                             reverseScheduleLink = reverseScheduleLink.Replace("_cl2_", "_cl1_");
+                        }
+
+                        if (reverseLineLink == null)
+                        {
+                            throw new Exception($"Bus Station {stationName} reverse schedule link is corrupt or could not be found.");
                         }
 
                         fullSchedualLink = $"{reverseLineLink}/{reverseScheduleLink}";
@@ -257,13 +300,13 @@ namespace RATBVWebService.Data.Services
             }
         }
 
-        private async Task<string> GetBusMainDisplayAsync(string lineNumberLink)
+        private async Task<string?> GetBusMainDisplayAsync(string lineNumberLink)
         {
             try
             {
                 var formattedLineNumberLink = lineNumberLink.Replace("___", "/");
 
-                string url = $"{WebSiteRoot}{formattedLineNumberLink}";
+                var url = $"{WebSiteRoot}{formattedLineNumberLink}";
 
                 var httpWebRequest = WebRequest.Create(url);
 
@@ -275,22 +318,22 @@ namespace RATBVWebService.Data.Services
 
                 doc.Load(responseStream);
 
-                HtmlNode frameStations = doc.DocumentNode
-                                            .Descendants("frame")
-                                            .Where(x => x.Attributes
-                                                         .Contains("name")
-                                                     && x.Attributes
-                                                         .Contains("noresize")
-                                                     && x.Attributes["name"]
-                                                         .Value
-                                                         .Equals("frTabs")
-                                                     && x.Attributes["noresize"]
-                                                         .Value
-                                                         .Equals("noresize"))
-                                            .SingleOrDefault();
+                HtmlNode? frameStations = doc.DocumentNode
+                                            ?.Descendants("frame")
+                                            ?.Where(x => x.Attributes
+                                                          .Contains("name")
+                                                      && x.Attributes
+                                                          .Contains("noresize")
+                                                      && x.Attributes["name"]
+                                                          .Value
+                                                          .Equals("frTabs")
+                                                      && x.Attributes["noresize"]
+                                                          .Value
+                                                          .Equals("noresize"))
+                                            ?.SingleOrDefault();
 
-                return frameStations.Attributes["src"]
-                                    .Value;
+                return frameStations?.Attributes["src"]
+                                    ?.Value;
             }
             catch (Exception ex)
             {
@@ -308,9 +351,9 @@ namespace RATBVWebService.Data.Services
             {
                 var busTimeTable = new List<BusTimeTableModel>();
 
-                string formattedSchedualLink = schedualLink.Replace("___", "/");
+                var formattedSchedualLink = schedualLink.Replace("___", "/");
 
-                string url = $"{WebSiteRoot}afisaje/{formattedSchedualLink}";
+                var url = $"{WebSiteRoot}afisaje/{formattedSchedualLink}";
 
                 var httpWebRequest = WebRequest.Create(url);
 
@@ -322,10 +365,10 @@ namespace RATBVWebService.Data.Services
 
                 doc.Load(responseStream);
 
-                var tableWeekdays = doc.GetElementbyId("tabele")
-                                       .ChildNodes[1];
-                var tableWeekend = doc.GetElementbyId("tabele")
-                                      .ChildNodes[3];
+                var tableWeekdays = doc?.GetElementbyId("tabele")
+                                       ?.ChildNodes[1];
+                var tableWeekend = doc?.GetElementbyId("tabele")
+                                      ?.ChildNodes[3];
 
                 // Get the time of week time table
                 GetTimeTablePerTimeofWeek(busTimeTable, tableWeekdays, TimeOfTheWeek.WeekDays);
@@ -342,16 +385,28 @@ namespace RATBVWebService.Data.Services
         }
 
         private void GetTimeTablePerTimeofWeek(List<BusTimeTableModel> busTimeTable,
-                                               HtmlNode tableWeekdays,
+                                               HtmlNode? timetable,
                                                TimeOfTheWeek timeOfWeek)
         {
+            if (timetable == null)
+            {
+                throw new Exception($"Bus timetable is corrupt or could not be found.");
+            }
+
             var hour = string.Empty;
             var minutes = string.Empty;
 
             // Skip first three items because of time of week div, hour div and minutes div
-            foreach (HtmlNode node in tableWeekdays.Descendants("div")
-                                                   .ToList()
-                                                   .Skip(3))
+            var timetableHtmlNodes = timetable.Descendants("div")
+                                                ?.ToList()
+                                                ?.Skip(3);
+
+            if (timetableHtmlNodes == null)
+            {
+                throw new Exception($"Bus timetable rows are corrupt or could not be found.");
+            }
+
+            foreach (HtmlNode node in timetableHtmlNodes)
             {
                 if (node.Id == "web_class_hours")
                 {
@@ -361,7 +416,15 @@ namespace RATBVWebService.Data.Services
                 }
                 else if (node.Id == "web_class_minutes")
                 {
-                    foreach (var minuteNode in node.Descendants("div").ToList())
+                    var minuteNodes = node?.Descendants("div")
+                                          ?.ToList();
+
+                    if (minuteNodes == null)
+                    {
+                        throw new Exception($"Bus timetable minute rows are corrupt or could not be found.");
+                    }
+
+                    foreach (var minuteNode in minuteNodes)
                     {
                         minutes += $" {minuteNode.InnerText.Trim()}";
                     }
