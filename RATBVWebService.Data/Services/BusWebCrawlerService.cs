@@ -245,7 +245,7 @@ namespace RATBVWebService.Data.Services
                     busStations.Add(new BusStationModel
                     {
                         Name = stationName,
-                        SchedualLink = fullSchedualLink.Replace("/", "___")
+                        ScheduleLink = fullSchedualLink.Replace("/", "___")
                     });
                 }
 

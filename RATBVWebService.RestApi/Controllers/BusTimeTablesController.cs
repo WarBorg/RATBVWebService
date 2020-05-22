@@ -12,7 +12,7 @@ namespace RATBVWebService.RestApi.Controllers
     {
         #region Dependencies
 
-        private IBusDataService _busDataService;
+        private readonly IBusDataService _busDataService;
 
         #endregion
 
