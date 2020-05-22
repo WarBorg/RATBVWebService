@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using RATBVData.Models.Models;
@@ -29,9 +30,22 @@ namespace RATBVWebService.RestApi.Controllers
 
         // GET: api/busstations/valid_line_number_link
         [HttpGet("{lineNumberLink}")]
-        public async Task<IEnumerable<BusStationModel>> Get(string lineNumberLink)
+        public async Task<ActionResult<IEnumerable<BusStationModel>>> Get(string lineNumberLink)
         {
-            return await _busDataService.GetBusStationsAsync(lineNumberLink);
+            try
+            {
+                return await _busDataService.GetBusStationsAsync(lineNumberLink);
+            }
+            catch (Exception ex)
+            {
+                var error = new ErrorResponseModel
+                    (
+                        errorType: "Not Found",
+                        errorMessage: ex.Message
+                    );
+
+                return StatusCode(500, error);
+            }
         }
 
         #endregion
