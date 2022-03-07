@@ -21,7 +21,8 @@ namespace RATBVWebService.Data.Services
 
         #region Bus Lines Methods
 
-        // TODO Get busses from TRANSPORT METROPOLITAN
+        // TODO Get buses from TRANSPORT METROPOLITAN
+        // TODO Get buses from TRANSPORT ELEVI
         public async Task<List<BusLineModel>> GetBusLinesAsync()
         {
             var id = 1;
@@ -105,6 +106,15 @@ namespace RATBVWebService.Data.Services
                                           .Replace("&nbsp;", " ")
                                           .Replace("&acirc;", "â");
 
+                        // There is a new bus line "Transport Elevi" which was added as a special item
+                        // so this will give us error so we skip
+                        if (str.Contains("Elevi"))
+                        {
+                            breakLoop = true;
+
+                            break;
+                        }
+
                         // If there are cells which dont contain the a href element it means we are at the
                         // TRANSPORT METROPOLITAN line so we break
                         if (items[i].Descendants("a")
@@ -154,38 +164,45 @@ namespace RATBVWebService.Data.Services
 
         private void CleanUpBusLinesText(ref string line, ref string route, ref BusTypes type, int i, string str)
         {
-            // Add a space between the eventual letter after the number (ex 5B)
-            str = Regex.Replace(str,
-                                "(?<=[0-9])(?=[A-Za-z])|(?<=[A-Za-z])(?=[0-9])",
-                                " ");
-
-            var line_route = str.Split(' ')
-                                .ToList();
-
-            // In case the number contains a letter connate it back to the number (ex 5B)
-            if (line_route[2].Length == 1)
+            try
             {
-                line_route[1] += line_route[2];
-                line_route.RemoveAt(2);
+                // Add a space between the eventual letter after the number (ex 5B)
+                str = Regex.Replace(str.Trim(),
+                                    "(?<=[0-9])(?=[A-Za-z])|(?<=[A-Za-z])(?=[0-9])",
+                                    " ");
+
+                var line_route = str.Split(' ')
+                                    .ToList();
+
+                // In case the number contains a letter connate it back to the number (ex 5B)
+                if (line_route[2].Length == 1)
+                {
+                    line_route[1] += line_route[2];
+                    line_route.RemoveAt(2);
+                }
+
+                line = $"{line_route[0]} {line_route[1]}";
+
+                // When creating the route skip the first two items as they are the line number
+                route = line_route.Skip(2)
+                                  .Aggregate((k, l) => $"{k} {l}");
+
+                switch (i)
+                {
+                    case 0:
+                        type = BusTypes.Bus;
+                        break;
+                    case 1:
+                        type = BusTypes.Midibus;
+                        break;
+                    case 2:
+                        type = BusTypes.Trolleybus;
+                        break;
+                }
             }
-
-            line = $"{line_route[0]} {line_route[1]}";
-
-            // When creating the route skip the first two items as they are the line number
-            route = line_route.Skip(2)
-                              .Aggregate((k, l) => $"{k} {l}");
-
-            switch (i)
+            catch (Exception ex)
             {
-                case 0:
-                    type = BusTypes.Bus;
-                    break;
-                case 1:
-                    type = BusTypes.Midibus;
-                    break;
-                case 2:
-                    type = BusTypes.Trolleybus;
-                    break;
+                throw new InvalidOperationException($"{nameof(CleanUpBusLinesText)} has thrown an error while cleaning up text for: {str}");
             }
         }
 
