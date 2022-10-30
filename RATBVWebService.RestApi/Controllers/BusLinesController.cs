@@ -58,7 +58,7 @@ namespace RATBVWebService.RestApi.Controllers
                 var busLines = await _busDataService.GetBusLinesAsync();
                 var busLine = busLines.FirstOrDefault(b => b.Name == $"Linia {number}");
 
-                if (busLine == null)
+                if (busLine is null)
                 {
                     var error = new ErrorResponseModel
                         (

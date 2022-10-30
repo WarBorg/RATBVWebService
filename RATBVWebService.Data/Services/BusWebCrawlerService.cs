@@ -54,7 +54,7 @@ namespace RATBVWebService.Data.Services
 
                 var table = div?.Element("table");
 
-                if (table == null)
+                if (table is null)
                 {
                     throw new Exception("Bus Lines div element table could not be found.");
                 }
@@ -77,7 +77,7 @@ namespace RATBVWebService.Data.Services
                     var items = row.Elements("td")
                                    .ToArray();
 
-                    if (items == null)
+                    if (items is null)
                     {
                         throw new Exception("Bus Lines td elements could not be found.");
                     }
@@ -88,7 +88,7 @@ namespace RATBVWebService.Data.Services
 
                     for (int i = 0; i < items.Length; i++)
                     {
-                        if (items[i] == null)
+                        if (items[i] is null)
                         {
                             continue;
                         }
@@ -118,7 +118,7 @@ namespace RATBVWebService.Data.Services
                         // If there are cells which dont contain the a href element it means we are at the
                         // TRANSPORT METROPOLITAN line so we break
                         if (items[i].Descendants("a")
-                                    .FirstOrDefault() == null)
+                                    .FirstOrDefault() is null)
                         {
                             breakLoop = true;
 
@@ -133,7 +133,7 @@ namespace RATBVWebService.Data.Services
                                                    // Replace the / to a more common HTML frendly carachter 
                                                    ?.Replace("/", "___");
 
-                        if (linkNormalWay == null)
+                        if (linkNormalWay is null)
                         {
                             throw new Exception("Bus Line link normal way could be corrupted or not found.");
                         }
@@ -218,7 +218,7 @@ namespace RATBVWebService.Data.Services
 
                 var lineNumberStationsLink = await GetBusMainDisplayAsync(lineNumberLink);
 
-                if (lineNumberStationsLink == null)
+                if (lineNumberStationsLink is null)
                 {
                     throw new Exception("Bus Stations links could be corrupted or not found.");
                 }
@@ -244,7 +244,7 @@ namespace RATBVWebService.Data.Services
                                           .Contains("div_center_"))
                              ?.ToList();
 
-                if (div == null)
+                if (div is null)
                 {
                     throw new Exception("Bus Stations div element could not be found.");
                 }
@@ -274,10 +274,12 @@ namespace RATBVWebService.Data.Services
                         isFirstScheduleLink = false;
                     }
 
-                    if (firstScheduleLink == null)
+                    if (firstScheduleLink is null)
                     {
                         throw new Exception($"Bus Station {stationName} first schedule link is corrupt or could not be found.");
                     }
+
+                    var isLastStation = false;
 
                     if (fullSchedualLink.Contains("/../"))
                     {
@@ -285,27 +287,43 @@ namespace RATBVWebService.Data.Services
                         var reverseLineLink = fullSchedualLink?.Substring(fullSchedualLink.LastIndexOf("/") + 1)
                                                               ?.Replace(".html", string.Empty);
 
-                        if (reverseScheduleLink.Contains("_cl1_"))
+                        if (reverseScheduleLink?.Contains("_cl1_") == true)
                         {
                             reverseScheduleLink = reverseScheduleLink.Replace("_cl1_", "_cl2_");
                         }
-                        else if (reverseScheduleLink.Contains("_cl2_"))
+                        else if (reverseScheduleLink?.Contains("_cl2_") == true)
                         {
                             reverseScheduleLink = reverseScheduleLink.Replace("_cl2_", "_cl1_");
                         }
 
-                        if (reverseLineLink == null)
+                        if (reverseLineLink is null)
                         {
                             throw new Exception($"Bus Station {stationName} reverse schedule link is corrupt or could not be found.");
                         }
 
                         fullSchedualLink = $"{reverseLineLink}/{reverseScheduleLink}";
+
+                        isLastStation = true;
                     }
+
+                    var direction = fullSchedualLink switch
+                    {
+                        var fsl when (fsl.Contains("dus") &&
+                                      !isLastStation) ||
+                                     (fsl.Contains("intors") &&
+                                      isLastStation) => "normal",
+                        var fsl when (fsl.Contains("intors") &&
+                                      !isLastStation) ||
+                                     (fsl.Contains("dus")  &&
+                                      isLastStation) => "reverse",
+                        _ => string.Empty
+                    };
 
                     busStations.Add(new BusStationModel
                     {
                         Name = stationName,
-                        ScheduleLink = fullSchedualLink.Replace("/", "___")
+                        ScheduleLink = fullSchedualLink.Replace("/", "___"),
+                        Direction = direction
                     });
                 }
 
@@ -405,7 +423,7 @@ namespace RATBVWebService.Data.Services
                                                HtmlNode? timetable,
                                                TimeOfTheWeek timeOfWeek)
         {
-            if (timetable == null)
+            if (timetable is null)
             {
                 throw new Exception($"Bus timetable is corrupt or could not be found.");
             }
@@ -418,7 +436,7 @@ namespace RATBVWebService.Data.Services
                                                 ?.ToList()
                                                 ?.Skip(3);
 
-            if (timetableHtmlNodes == null)
+            if (timetableHtmlNodes is null)
             {
                 throw new Exception($"Bus timetable rows are corrupt or could not be found.");
             }
@@ -436,7 +454,7 @@ namespace RATBVWebService.Data.Services
                     var minuteNodes = node?.Descendants("div")
                                           ?.ToList();
 
-                    if (minuteNodes == null)
+                    if (minuteNodes is null)
                     {
                         throw new Exception($"Bus timetable minute rows are corrupt or could not be found.");
                     }
