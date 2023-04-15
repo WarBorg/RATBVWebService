@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
+using System.Net.Http;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using HtmlAgilityPack;
@@ -33,11 +33,11 @@ namespace RATBVWebService.Data.Services
 
             try
             {
-                var httpWebRequest = WebRequest.Create(url);
+                var httpClient = new HttpClient();
 
-                var response = await httpWebRequest.GetResponseAsync();
+                var response = await httpClient.GetAsync(url);
 
-                var responseStream = response.GetResponseStream();
+                var responseStream = await response.Content.ReadAsStreamAsync();
 
                 var doc = new HtmlDocument();
 
@@ -108,7 +108,7 @@ namespace RATBVWebService.Data.Services
 
                         // There is a new bus line "Transport Elevi" which was added as a special item
                         // so this will give us error so we skip
-                        if (str.Contains("Elevi"))
+                        if (str.Contains("elevi", StringComparison.InvariantCultureIgnoreCase))
                         {
                             breakLoop = true;
 
@@ -156,9 +156,9 @@ namespace RATBVWebService.Data.Services
 
                 return busLines;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
 
@@ -200,7 +200,7 @@ namespace RATBVWebService.Data.Services
                         break;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 throw new InvalidOperationException($"{nameof(CleanUpBusLinesText)} has thrown an error while cleaning up text for: {str}");
             }
@@ -225,11 +225,11 @@ namespace RATBVWebService.Data.Services
 
                 var url = $"{WebSiteRoot}afisaje/{lineNumberStationsLink}";
 
-                var httpWebRequest = WebRequest.Create(url);
+                var httpClient = new HttpClient();
 
-                var response = await httpWebRequest.GetResponseAsync();
+                var response = await httpClient.GetAsync(url);
 
-                var responseStream = response.GetResponseStream();
+                var responseStream = await response.Content.ReadAsStreamAsync();
 
                 var doc = new HtmlDocument();
 
@@ -329,13 +329,13 @@ namespace RATBVWebService.Data.Services
 
                 return busStations;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
 
-        private async Task<string?> GetBusMainDisplayAsync(string lineNumberLink)
+        private static async Task<string?> GetBusMainDisplayAsync(string lineNumberLink)
         {
             try
             {
@@ -343,11 +343,11 @@ namespace RATBVWebService.Data.Services
 
                 var url = $"{WebSiteRoot}{formattedLineNumberLink}";
 
-                var httpWebRequest = WebRequest.Create(url);
+                var httpClient = new HttpClient();
 
-                var response = await httpWebRequest.GetResponseAsync();
+                var response = await httpClient.GetAsync(url);
 
-                var responseStream = response.GetResponseStream();
+                var responseStream = await response.Content.ReadAsStreamAsync();
 
                 var doc = new HtmlDocument();
 
@@ -370,9 +370,9 @@ namespace RATBVWebService.Data.Services
                 return frameStations?.Attributes["src"]
                                     ?.Value;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
 
@@ -390,11 +390,11 @@ namespace RATBVWebService.Data.Services
 
                 var url = $"{WebSiteRoot}afisaje/{formattedSchedualLink}";
 
-                var httpWebRequest = WebRequest.Create(url);
+                var httpClient = new HttpClient();
 
-                var response = await httpWebRequest.GetResponseAsync();
+                var response = await httpClient.GetAsync(url);
 
-                var responseStream = response.GetResponseStream();
+                var responseStream = await response.Content.ReadAsStreamAsync();
 
                 var doc = new HtmlDocument();
 
@@ -413,15 +413,16 @@ namespace RATBVWebService.Data.Services
 
                 return busTimeTable;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw ex;
+                throw;
             }
         }
 
-        private void GetTimeTablePerTimeofWeek(List<BusTimeTableModel> busTimeTable,
-                                               HtmlNode? timetable,
-                                               TimeOfTheWeek timeOfWeek)
+        private static void GetTimeTablePerTimeofWeek(
+            List<BusTimeTableModel> busTimeTable,
+            HtmlNode? timetable,
+            TimeOfTheWeek timeOfWeek)
         {
             if (timetable is null)
             {
